@@ -1,0 +1,58 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.19/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.19",
+  "version": "1.0.0",
+  "id": "3b7d1c8e-9f4a-4b2d-a1c5-6e8f0d2a7c3b",
+  "packageName": "com.oberon360.teambot",
+  "developer": {
+    "name": "Oberon 360",
+    "websiteUrl": "https://www.oberon360.com",
+    "privacyUrl": "https://www.oberon360.com/privacy",
+    "termsOfUseUrl": "https://www.oberon360.com/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "Oberon 360 Bot",
+    "full": "Oberon 360 Bot de Notificaciones"
+  },
+  "description": {
+    "short": "Bot de notificaciones proactivas de Oberon 360.",
+    "full": "Recibe mensajes y notificaciones importantes de Oberon 360 directamente en Teams. Usa el comando 'optout' para dejar de recibir notificaciones proactivas."
+  },
+  "accentColor": "#6264A7",
+  "bots": [
+    {
+      "botId": "REPLACE_WITH_MICROSOFT_APP_ID",
+      "needsChannelSelector": false,
+      "isNotificationOnly": false,
+      "supportsCalling": false,
+      "supportsVideo": false,
+      "supportsFiles": false,
+      "scopes": ["personal", "team", "groupChat"],
+      "commandLists": [
+        {
+          "scopes": ["personal", "team", "groupChat"],
+          "commands": [
+            {
+              "title": "ayuda",
+              "description": "Muestra los comandos disponibles."
+            },
+            {
+              "title": "optout",
+              "description": "Deja de recibir notificaciones proactivas."
+            },
+            {
+              "title": "optin",
+              "description": "Vuelve a recibir notificaciones proactivas."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": []
+}

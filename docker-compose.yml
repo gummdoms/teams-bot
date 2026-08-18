@@ -1,0 +1,9 @@
+services:
+  team-bot:
+    build: .
+    image: registry.damnova.com/team-bot:1.0.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - '${PORT:-3000}:3000'

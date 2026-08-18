@@ -1,0 +1,36 @@
+export const APP_NAME = 'Team Bot - Oberon 360';
+export const APP_VERSION = '1.0.0';
+
+/** Fallback global service URL for proactive messages (public cloud). */
+export const DEFAULT_TEAMS_SERVICE_URL = 'https://smba.trafficmanager.net/teams/';
+
+/** Environment variable keys consumed by the application. */
+export const ENV = {
+  NODE_ENV: 'NODE_ENV',
+  PORT: 'PORT',
+  MICROSOFT_APP_ID: 'MICROSOFT_APP_ID',
+  MICROSOFT_APP_PASSWORD: 'MICROSOFT_APP_PASSWORD',
+  MICROSOFT_APP_TENANT_ID: 'MICROSOFT_APP_TENANT_ID',
+  MICROSOFT_APP_NAME: 'MICROSOFT_APP_NAME',
+  BOT_FRAMEWORK_OAUTH_SCOPE: 'BOT_FRAMEWORK_OAUTH_SCOPE',
+  TEAMS_SERVICE_URL: 'TEAMS_SERVICE_URL',
+  GRAPH_TENANT_ID: 'GRAPH_TENANT_ID',
+  GRAPH_CLIENT_ID: 'GRAPH_CLIENT_ID',
+  GRAPH_CLIENT_SECRET: 'GRAPH_CLIENT_SECRET',
+  GRAPH_AUTHORITY: 'GRAPH_AUTHORITY',
+  GRAPH_BASE_URL: 'GRAPH_BASE_URL',
+  GRAPH_SCOPE: 'GRAPH_SCOPE',
+  MANIFEST_APP_ID: 'MANIFEST_APP_ID',
+  TEAMS_APP_CATALOG_ID: 'TEAMS_APP_CATALOG_ID',
+  API_KEY: 'API_KEY',
+  DB_HOST: 'DB_HOST',
+  DB_PORT: 'DB_PORT',
+  DB_USER: 'DB_USER',
+  DB_PASSWORD: 'DB_PASSWORD',
+  DB_NAME: 'DB_NAME',
+  DB_SYNCHRONIZE: 'DB_SYNCHRONIZE',
+  DB_SSL: 'DB_SSL',
+} as const;
+
+/** Bot Framework channel id used for Teams conversations. */
+export const TEAMS_CHANNEL_ID = 'msteams';
