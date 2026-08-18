@@ -56,9 +56,11 @@ export class TeamsBotAdapter {
       // instead of interpolating "undefined" into the authority URL.
       ...(tenantId ? { MicrosoftAppTenantId: tenantId } : {}),
       // Both values must be set together: the auth factory switches to the
-      // parameterized path when any of them is present, and a missing login
-      // URL makes MSAL fail with "empty_url_error" when acquiring the bot token.
-      ToChannelFromBotLoginUrl: 'https://login.microsoftonline.com',
+      // parameterized path when any of them is present. The trailing slash is
+      // required so the factory builds the MicrosoftAppCredentials (public
+      // cloud) instead of PrivateCloudAppCredentials, which drops the tenant
+      // and makes MSAL fail with "AADSTS900023: tenant 'undefined'".
+      ToChannelFromBotLoginUrl: 'https://login.microsoftonline.com/',
       ToChannelFromBotOAuthScope: this.oauthScope,
     });
 
@@ -152,6 +154,12 @@ export class TeamsBotAdapter {
         activityId = response?.id ?? null;
       },
     );
+
+    // The adapter swallows turn errors into onTurnError and resolves normally,
+    // so a missing activity id means the message was not actually delivered.
+    if (activityId === null) {
+      throw new Error('Proactive message was not delivered; no activity id returned.');
+    }
 
     return activityId;
   }
