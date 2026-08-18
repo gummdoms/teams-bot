@@ -1,6 +1,6 @@
 {
   "name": "team-bot",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Bot de Microsoft Teams para mensajes proactivos - Oberon 360",
   "author": "Oberon 360",
   "private": true,

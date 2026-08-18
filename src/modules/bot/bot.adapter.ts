@@ -39,7 +39,10 @@ export class TeamsBotAdapter {
   constructor(configService: ConfigService) {
     this.appId = configService.getOrThrow<string>(ENV.MICROSOFT_APP_ID);
     const appPassword = configService.getOrThrow<string>(ENV.MICROSOFT_APP_PASSWORD);
-    const tenantId = firstNonEmpty(configService.get<string>(ENV.MICROSOFT_APP_TENANT_ID));
+    const tenantId = firstNonEmpty(
+      configService.get<string>(ENV.MICROSOFT_APP_TENANT_ID),
+      configService.get<string>(ENV.GRAPH_TENANT_ID),
+    );
     this.appName =
       firstNonEmpty(configService.get<string>(ENV.MICROSOFT_APP_NAME)) ?? 'Oberon360 Bot';
     this.oauthScope =
@@ -49,7 +52,13 @@ export class TeamsBotAdapter {
     const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
       MicrosoftAppId: this.appId,
       MicrosoftAppPassword: appPassword,
-      MicrosoftAppTenantId: tenantId ?? undefined,
+      // Omit the tenant key when unknown so the library applies its own default
+      // instead of interpolating "undefined" into the authority URL.
+      ...(tenantId ? { MicrosoftAppTenantId: tenantId } : {}),
+      // Both values must be set together: the auth factory switches to the
+      // parameterized path when any of them is present, and a missing login
+      // URL makes MSAL fail with "empty_url_error" when acquiring the bot token.
+      ToChannelFromBotLoginUrl: 'https://login.microsoftonline.com',
       ToChannelFromBotOAuthScope: this.oauthScope,
     });
 
