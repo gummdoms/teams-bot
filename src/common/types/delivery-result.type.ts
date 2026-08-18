@@ -10,6 +10,13 @@
 export type DeliveryStatus =
   'SENT' | 'USER_NOT_FOUND' | 'NOT_INSTALLED' | 'BLOCKED' | 'OPTED_OUT' | 'ERROR';
 
+/** Metadata of an attachment included in a delivered message. */
+export interface RecipientAttachment {
+  name: string;
+  contentType: string;
+  size: number;
+}
+
 /** Result of a single recipient delivery attempt. */
 export interface RecipientResult {
   email: string;
@@ -18,6 +25,7 @@ export interface RecipientResult {
   aadObjectId?: string;
   conversationId?: string;
   activityId?: string;
+  attachments?: RecipientAttachment[];
 }
 
 /** Aggregate response for a proactive broadcast. */

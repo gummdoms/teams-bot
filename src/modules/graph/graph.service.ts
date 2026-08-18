@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { GraphUser, InstalledTeamsApp } from '../../common/types/graph-user.type';
 import { ENV } from '../../common/constants/config-globals';
+import { firstNonEmpty } from '../../common/utils/env.utils';
 import { MsalService } from '../../shared/msal/msal.service';
 
 const USER_SELECT_FIELDS = 'id,displayName,mail,userPrincipalName,jobTitle,companyName';
@@ -121,7 +122,10 @@ export class GraphService {
   }
 
   private get graphBaseUrl(): string {
-    return this.configService.get<string>(ENV.GRAPH_BASE_URL) ?? 'https://graph.microsoft.com/v1.0';
+    return (
+      firstNonEmpty(this.configService.get<string>(ENV.GRAPH_BASE_URL)) ??
+      'https://graph.microsoft.com/v1.0'
+    );
   }
 
   private async get<T>(url: URL): Promise<T> {

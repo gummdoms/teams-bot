@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ActivityTypes, TurnContext } from 'botbuilder';
 import { ENV, TEAMS_CHANNEL_ID } from '../../common/constants/config-globals';
 import { messages } from '../../common/constants/messages';
+import { firstNonEmpty } from '../../common/utils/env.utils';
 import { CONVERSATION_REPOSITORY } from '../../domain/conversations/repositories/conversation-repository.port';
 import type { ConversationRepositoryPort } from '../../domain/conversations/repositories/conversation-repository.port';
 import { GraphService } from '../graph/graph.service';
@@ -161,7 +162,7 @@ export class BotActivitiesService {
 
   private get defaultServiceUrl(): string {
     return (
-      this.configService.get<string>(ENV.TEAMS_SERVICE_URL) ??
+      firstNonEmpty(this.configService.get<string>(ENV.TEAMS_SERVICE_URL)) ??
       'https://smba.trafficmanager.net/teams/'
     );
   }

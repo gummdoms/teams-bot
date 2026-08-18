@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { ConversationReferenceEntity } from '../../domain/conversations/entities/conversation-reference.entity';
 import type { ConversationRepositoryPort } from '../../domain/conversations/repositories/conversation-repository.port';
+import type { AttachmentService } from '../attachments/attachment.service';
 import type { TeamsBotAdapter } from '../bot/bot.adapter';
 import type { GraphService } from '../graph/graph.service';
 import { classifyProactiveError } from './proactive-error.classifier';
@@ -61,16 +62,21 @@ describe('ProactiveService', () => {
     list: jest.fn(),
     setOptOut: jest.fn(),
   };
+  const attachmentService = {
+    resolveAll: jest.fn(),
+  };
 
   let service: ProactiveService;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    attachmentService.resolveAll.mockResolvedValue([]);
     service = new ProactiveService(
       adapter as unknown as TeamsBotAdapter,
       graphService as unknown as GraphService,
       configService as unknown as ConfigService,
       conversationRepository as unknown as ConversationRepositoryPort,
+      attachmentService as unknown as AttachmentService,
     );
   });
 
@@ -101,7 +107,7 @@ describe('ProactiveService', () => {
     expect(result.failed).toBe(0);
     expect(result.results[0].status).toBe('SENT');
     expect(result.results[0].activityId).toBe('activity-1');
-    expect(adapter.sendProactiveMessage).toHaveBeenCalledWith(storedReference, 'Hola');
+    expect(adapter.sendProactiveMessage).toHaveBeenCalledWith(storedReference, 'Hola', []);
     expect(graphService.getUserByEmail).not.toHaveBeenCalled();
   });
 
@@ -175,6 +181,73 @@ describe('ProactiveService', () => {
       expect.objectContaining({ conversationId: 'conv-2', email: 'user2@corp.com' }),
     );
     expect(result.results[0].status).toBe('SENT');
+  });
+
+  it('falls back to the default service URL when TEAMS_SERVICE_URL is empty', async () => {
+    configService.get.mockImplementation((key: string) =>
+      key === 'TEAMS_SERVICE_URL' ? '' : undefined,
+    );
+    conversationRepository.findByEmail.mockResolvedValue(null);
+    graphService.getUserByEmail.mockResolvedValue({
+      id: 'aad-3',
+      displayName: 'User Three',
+      mail: 'user3@corp.com',
+      userPrincipalName: 'user3@corp.com',
+    });
+    adapter.createConversation.mockResolvedValue({ id: 'conv-3' });
+    conversationRepository.upsert.mockResolvedValue({
+      ...storedReference,
+      aadObjectId: 'aad-3',
+      conversationId: 'conv-3',
+    });
+    adapter.sendProactiveMessage.mockResolvedValue('activity-3');
+
+    const result = await service.sendToEmails({
+      emails: ['user3@corp.com'],
+      text: 'Hola',
+    });
+
+    expect(adapter.createConversation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        serviceUrl: 'https://smba.trafficmanager.net/teams/',
+      }),
+    );
+    expect(result.results[0].status).toBe('SENT');
+  });
+
+  it('resolves and forwards attachments to the adapter', async () => {
+    conversationRepository.findByEmail.mockResolvedValue(storedReference);
+    adapter.sendProactiveMessage.mockResolvedValue('activity-attach');
+    attachmentService.resolveAll.mockResolvedValue([
+      {
+        url: 'https://bot.example.com/api/files/abc',
+        name: 'aviso.pdf',
+        contentType: 'application/pdf',
+        size: 1234,
+      },
+    ]);
+
+    const result = await service.sendToEmails({
+      emails: ['user@corp.com'],
+      text: 'Hola',
+      attachments: [{ url: 'https://ejemplo.com/aviso.pdf' }],
+    });
+
+    expect(attachmentService.resolveAll).toHaveBeenCalledWith([
+      { url: 'https://ejemplo.com/aviso.pdf' },
+    ]);
+    expect(adapter.sendProactiveMessage).toHaveBeenCalledWith(storedReference, 'Hola', [
+      {
+        url: 'https://bot.example.com/api/files/abc',
+        name: 'aviso.pdf',
+        contentType: 'application/pdf',
+        size: 1234,
+      },
+    ]);
+    expect(result.results[0].status).toBe('SENT');
+    expect(result.results[0].attachments).toEqual([
+      { name: 'aviso.pdf', contentType: 'application/pdf', size: 1234 },
+    ]);
   });
 
   it('reports NOT_INSTALLED when the app is not installed for the user', async () => {

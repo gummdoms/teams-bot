@@ -1,17 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  Activity,
+  ActivityTypes,
   CloudAdapter,
   ConfigurationBotFrameworkAuthentication,
   ConversationParameters,
   ConversationReference,
-  MessageFactory,
   Request,
   Response,
   TurnContext,
 } from 'botbuilder';
 import { ENV } from '../../common/constants/config-globals';
+import { firstNonEmpty } from '../../common/utils/env.utils';
 import { ConversationReferenceEntity } from '../../domain/conversations/entities/conversation-reference.entity';
+import type { ResolvedAttachment } from '../attachments/attachment.service';
 
 /** Parameters required to create a new one-on-one conversation. */
 export interface CreateConversationParams {
@@ -36,10 +39,12 @@ export class TeamsBotAdapter {
   constructor(configService: ConfigService) {
     this.appId = configService.getOrThrow<string>(ENV.MICROSOFT_APP_ID);
     const appPassword = configService.getOrThrow<string>(ENV.MICROSOFT_APP_PASSWORD);
-    const tenantId = configService.get<string>(ENV.MICROSOFT_APP_TENANT_ID);
-    this.appName = configService.get<string>(ENV.MICROSOFT_APP_NAME) ?? 'Oberon360 Bot';
+    const tenantId = firstNonEmpty(configService.get<string>(ENV.MICROSOFT_APP_TENANT_ID));
+    this.appName =
+      firstNonEmpty(configService.get<string>(ENV.MICROSOFT_APP_NAME)) ?? 'Oberon360 Bot';
     this.oauthScope =
-      configService.get<string>(ENV.BOT_FRAMEWORK_OAUTH_SCOPE) ?? 'https://api.botframework.com';
+      firstNonEmpty(configService.get<string>(ENV.BOT_FRAMEWORK_OAUTH_SCOPE)) ??
+      'https://api.botframework.com';
 
     const botFrameworkAuthentication = new ConfigurationBotFrameworkAuthentication({
       MicrosoftAppId: this.appId,
@@ -101,8 +106,19 @@ export class TeamsBotAdapter {
   async sendProactiveMessage(
     reference: ConversationReferenceEntity,
     text: string,
+    attachments: ResolvedAttachment[] = [],
   ): Promise<string | null> {
     let activityId: string | null = null;
+
+    const activity: Partial<Activity> = {
+      type: ActivityTypes.Message,
+      text,
+      attachments: attachments.map((attachment) => ({
+        contentType: attachment.contentType,
+        contentUrl: attachment.url,
+        name: attachment.name,
+      })),
+    };
 
     const conversationReference: Partial<ConversationReference> = {
       activityId: reference.activityId ?? undefined,
@@ -123,7 +139,7 @@ export class TeamsBotAdapter {
       conversationReference,
       this.oauthScope,
       async (context) => {
-        const response = await context.sendActivity(MessageFactory.text(text));
+        const response = await context.sendActivity(activity);
         activityId = response?.id ?? null;
       },
     );

@@ -11,6 +11,8 @@ import { firstNonEmpty } from '../../common/utils/env.utils';
 import { ConversationReferenceEntity } from '../../domain/conversations/entities/conversation-reference.entity';
 import { CONVERSATION_REPOSITORY } from '../../domain/conversations/repositories/conversation-repository.port';
 import type { ConversationRepositoryPort } from '../../domain/conversations/repositories/conversation-repository.port';
+import { AttachmentService } from '../attachments/attachment.service';
+import type { ResolvedAttachment } from '../attachments/attachment.service';
 import { TeamsBotAdapter } from '../bot/bot.adapter';
 import { GraphService } from '../graph/graph.service';
 import { classifyProactiveError, ProactiveErrorKind } from './proactive-error.classifier';
@@ -40,15 +42,19 @@ export class ProactiveService {
     private readonly configService: ConfigService,
     @Inject(CONVERSATION_REPOSITORY)
     private readonly conversationRepository: ConversationRepositoryPort,
+    private readonly attachmentService: AttachmentService,
   ) {}
 
   /** Sends a proactive message to one or more recipients and aggregates results. */
   async sendToEmails(dto: ProactiveMessageDto): Promise<SendProactiveResponse> {
     const emails = [...new Set(dto.emails.map((email) => email.trim().toLowerCase()))];
+    const attachments = await this.attachmentService.resolveAll(dto.attachments ?? []);
 
     const results: RecipientResult[] = [];
     for (const email of emails) {
-      results.push(await this.deliverToEmail(email, dto.text, dto.installIfMissing ?? false));
+      results.push(
+        await this.deliverToEmail(email, dto.text, dto.installIfMissing ?? false, attachments),
+      );
     }
 
     const sent = results.filter((result) => result.status === 'SENT').length;
@@ -59,6 +65,7 @@ export class ProactiveService {
     email: string,
     text: string,
     installIfMissing: boolean,
+    attachments: ResolvedAttachment[],
   ): Promise<RecipientResult> {
     const stored = await this.conversationRepository.findByEmail(email);
 
@@ -81,13 +88,14 @@ export class ProactiveService {
 
     try {
       const reference = stored ?? (await this.createAndStoreConversation(target, email));
-      const activityId = await this.adapter.sendProactiveMessage(reference, text);
+      const activityId = await this.adapter.sendProactiveMessage(reference, text, attachments);
       return {
         email,
         status: 'SENT',
         aadObjectId: target.id,
         conversationId: reference.conversationId,
         activityId: activityId ?? undefined,
+        attachments: attachmentSummary(attachments),
       };
     } catch (error) {
       const kind = classifyProactiveError(error);
@@ -95,7 +103,7 @@ export class ProactiveService {
       if (kind === 'NOT_INSTALLED') {
         await this.forgetStaleReference(stored);
         if (installIfMissing) {
-          return this.installAndRetry(email, text, target);
+          return this.installAndRetry(email, text, target, attachments);
         }
       }
 
@@ -121,7 +129,8 @@ export class ProactiveService {
     target: DeliveryTarget,
     email: string,
   ): Promise<ConversationReferenceEntity> {
-    const serviceUrl = this.configService.get<string>(ENV.TEAMS_SERVICE_URL) ?? DEFAULT_SERVICE_URL;
+    const serviceUrl =
+      firstNonEmpty(this.configService.get<string>(ENV.TEAMS_SERVICE_URL)) ?? DEFAULT_SERVICE_URL;
 
     const resource = await this.adapter.createConversation({
       aadObjectId: target.id,
@@ -147,17 +156,19 @@ export class ProactiveService {
     email: string,
     text: string,
     target: DeliveryTarget,
+    attachments: ResolvedAttachment[],
   ): Promise<RecipientResult> {
     try {
       await this.graphService.installAppForUser(target.id);
       const reference = await this.createAndStoreConversation(target, email);
-      const activityId = await this.adapter.sendProactiveMessage(reference, text);
+      const activityId = await this.adapter.sendProactiveMessage(reference, text, attachments);
       return {
         email,
         status: 'SENT',
         aadObjectId: target.id,
         conversationId: reference.conversationId,
         activityId: activityId ?? undefined,
+        attachments: attachmentSummary(attachments),
       };
     } catch (error) {
       this.logger.warn(`Proactive installation for ${email} failed: ${this.errorMessage(error)}`);
@@ -207,4 +218,13 @@ export class ProactiveService {
   private errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
   }
+}
+
+/** Compact attachment summary included in the delivery result. */
+function attachmentSummary(attachments: ResolvedAttachment[]) {
+  return attachments.map((attachment) => ({
+    name: attachment.name,
+    contentType: attachment.contentType,
+    size: attachment.size,
+  }));
 }

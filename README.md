@@ -33,6 +33,7 @@ El bot expone una **API REST** donde solo necesitas escribir **un correo o una l
 ## Características
 
 - **Envío proactivo por correo**: envía un mensaje a un correo o a una lista de correos en una sola llamada.
+- **Adjuntos por URL**: pasa una URL de un archivo (imagen, PDF, documento) y el bot lo descarga, valida y lo adjunta al mensaje. Las imágenes se renderizan inline y los documentos aparecen como tarjeta descargable.
 - **Búsqueda de usuarios**: busca usuarios en Entra ID por correo, UPN o nombre, e indica si el bot puede enviarles mensajes en este momento.
 - **Instalación proactiva**: con la opción `installIfMissing`, si el bot no está instalado para un usuario, se instala vía Microsoft Graph y se reintenta el envío.
 - **Persistencia de conversaciones**: almacena las referencias de conversación en PostgreSQL para reutilizarlas (no se recrea la conversación en cada envío).
@@ -195,10 +196,16 @@ Copia `.env.example` a `.env` y completa los valores:
 | `MANIFEST_APP_ID` | ✅ | GUID del manifest de la app de Teams. |
 | `TEAMS_APP_CATALOG_ID` | | ID de catálogo de la app (se resuelve solo vía Graph). |
 | `API_KEY` | | Clave del header `x-api-key` para la API REST. Vacía = API abierta (solo desarrollo). |
+| `PUBLIC_BASE_URL` | (adjuntos) | URL pública del bot, usada por Teams para cargar los adjuntos. Ej: `https://bot-empresa.dominio.com`. |
+| `FILE_STORAGE_DIR` | | Carpeta local de almacenamiento temporal de adjuntos. |
+| `ATTACHMENT_MAX_SIZE_MB` | | Tamaño máximo por adjunto (20 MB por defecto). |
+| `ATTACHMENT_TTL_HOURS` | | Horas de retención de adjuntos antes de limpiarse (24 por defecto). |
+| `ATTACHMENT_ALLOWED_HOSTS` | | Opcional: hosts permitidos para descargar adjuntos (separados por coma). Vacío = cualquier host. |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | | Conexión PostgreSQL. |
 | `DB_SYNCHRONIZE` | | `true` en desarrollo (crea el esquema). `false` en producción. |
 | `DB_SSL` | | `true` si la BD exige SSL (Azure). |
-| `PORT` | | Puerto HTTP (3000 por defecto). |
+| `PORT` | | Puerto **interno** de la app (siempre `3000` dentro del contenedor). |
+| `HOST_PORT` | | Puerto **externo** publicado por Docker (ej. `10000`). |
 | `NODE_ENV` | | `development` / `test` / `production`. |
 
 ---
@@ -285,9 +292,23 @@ curl -X POST -H "x-api-key: tu-clave" -H "Content-Type: application/json" \
   -d '{
     "emails": ["juan.perez@empresa.com", "maria.gomez@empresa.com"],
     "text": "Hola, este es un aviso importante de Oberon 360.",
-    "installIfMissing": true
+    "installIfMissing": true,
+    "attachments": [
+      { "url": "https://ejemplo.com/aviso.pdf", "name": "aviso.pdf" },
+      { "url": "https://ejemplo.com/informe.png" }
+    ]
   }'
 ```
+
+**Adjuntos** (`attachments`, opcional):
+
+- `url` (obligatorio): el bot descarga el archivo (http/https), valida tamaño y tipo, y lo sirve desde su propio endpoint público para que Teams lo renderice.
+- `name` (opcional): nombre mostrado; por defecto se toma del final de la URL.
+- `contentType` (opcional): tipo MIME; por defecto se detecta del servidor remoto.
+- Las **imágenes** (`image/*`) se muestran inline; los **documentos** aparecen como tarjeta con enlace de descarga.
+- Los adjuntos se almacenan temporalmente (por defecto 24 h, ver `ATTACHMENT_TTL_HOURS`) y se sirven en `/api/files/:id`.
+- Requiere `PUBLIC_BASE_URL` configurada (la URL pública del bot, alcanzable desde Teams).
+- Límite por archivo: `ATTACHMENT_MAX_SIZE_MB` (20 MB por defecto).
 
 Respuesta:
 

@@ -24,6 +24,12 @@ export const envValidationSchema = Joi.object({
 
   API_KEY: Joi.string().allow('').optional(),
 
+  PUBLIC_BASE_URL: Joi.string().uri().allow('').optional(),
+  FILE_STORAGE_DIR: Joi.string().allow('').optional(),
+  ATTACHMENT_MAX_SIZE_MB: Joi.number().positive().default(20),
+  ATTACHMENT_TTL_HOURS: Joi.number().positive().default(24),
+  ATTACHMENT_ALLOWED_HOSTS: Joi.string().allow('').optional(),
+
   DB_HOST: Joi.string().default('localhost'),
   DB_PORT: Joi.number().integer().positive().default(5432),
   DB_USER: Joi.string().default('postgres'),

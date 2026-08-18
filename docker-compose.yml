@@ -1,9 +1,16 @@
 services:
   team-bot:
     build: .
-    image: registry.damnova.com/team-bot:1.0.0
+    image: registry.damnova.com/team-bot:1.1.0
     restart: unless-stopped
     env_file:
       - .env
     ports:
-      - '${PORT:-3000}:3000'
+      # Puerta externa configurable; la app siempre escucha en 3000 dentro del contenedor.
+      - '${HOST_PORT:-3000}:3000'
+    volumes:
+      # Almacenamiento temporal de adjuntos (se limpia por TTL).
+      - uploads-data:/app/uploads
+
+volumes:
+  uploads-data:

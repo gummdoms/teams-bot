@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -7,8 +8,40 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUrl,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
+
+/** A file attachment delivered with the proactive message. */
+export class AttachmentUrlDto {
+  @ApiProperty({
+    description:
+      'URL del archivo (http/https). El bot lo descarga, lo valida y lo sirve desde su propio endpoint público.',
+    example: 'https://ejemplo.com/aviso.pdf',
+  })
+  @IsUrl({ require_tld: false }, { message: 'La URL del adjunto no es válida.' })
+  @MaxLength(2048, { message: 'La URL del adjunto supera la longitud máxima.' })
+  url: string;
+
+  @ApiPropertyOptional({
+    description: 'Nombre del archivo (por defecto se toma de la URL).',
+    example: 'aviso.pdf',
+  })
+  @IsOptional()
+  @IsString({ message: 'El campo "name" del adjunto debe ser un texto.' })
+  @MaxLength(255, { message: 'El nombre del adjunto supera la longitud máxima.' })
+  name?: string;
+
+  @ApiPropertyOptional({
+    description: 'Tipo MIME del archivo (por defecto se detecta del servidor remoto).',
+    example: 'application/pdf',
+  })
+  @IsOptional()
+  @IsString({ message: 'El campo "contentType" del adjunto debe ser un texto.' })
+  @MaxLength(100, { message: 'El contentType del adjunto supera la longitud máxima.' })
+  contentType?: string;
+}
 
 /** Payload to send a proactive message to one or more users by email. */
 export class ProactiveMessageDto {
@@ -33,6 +66,17 @@ export class ProactiveMessageDto {
   @IsNotEmpty({ message: 'El campo "text" no puede estar vacío.' })
   @MaxLength(4000, { message: 'El campo "text" supera los 4000 caracteres permitidos.' })
   text: string;
+
+  @ApiPropertyOptional({
+    type: [AttachmentUrlDto],
+    description:
+      'Archivos adjuntos (imágenes, documentos, etc.). El bot descarga cada URL, valida tamaño y tipo, y la adjunta al mensaje.',
+  })
+  @IsOptional()
+  @IsArray({ message: 'El campo "attachments" debe ser una lista de adjuntos.' })
+  @ValidateNested({ each: true })
+  @Type(() => AttachmentUrlDto)
+  attachments?: AttachmentUrlDto[];
 
   @ApiPropertyOptional({
     description:

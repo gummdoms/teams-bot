@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmAsyncConfig } from './config/database.config';
 import { envValidationSchema } from './config/env.validation';
 import { ConversationsInfrastructureModule } from './infrastructure/conversations/conversations-infrastructure.module';
+import { AttachmentsModule } from './modules/attachments/attachments.module';
 import { BotModule } from './modules/bot/bot.module';
 import { GraphModule } from './modules/graph/graph.module';
 import { HealthModule } from './modules/health/health.module';
@@ -21,6 +22,7 @@ import { ProactiveModule } from './modules/proactive/proactive.module';
     ConversationsInfrastructureModule,
     HealthModule,
     GraphModule,
+    AttachmentsModule,
     BotModule,
     ProactiveModule,
     MessagingModule,
